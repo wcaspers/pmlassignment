@@ -1,0 +1,111 @@
+##Machine Learning Project Assignment
+## Weight lifting exercise - Predict if exercises are done correctly
+**Background**
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
+
+The training data for this project are available here: 
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here: 
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+**Refernce**
+Ugulino, W.; Cardador, D.; Vega, K.; Velloso, E.; Milidiu, R.; Fuks, H. Wearable Computing:
+Accelerometers' Data Classification of Body Postures and Movements. Proceedings of 21st
+Brazilian Symposium on Artificial Intelligence. Advances in Artificial Intelligence - SBIA 2012. In: Lecture
+Notes in Computer Science. pp. 52-61. Curitiba, PR: Springer Berlin / Heidelberg, 2012. ISBN
+978-3-642-34458-9. DOI: 10.1007/978-3-642-34459-6_6.
+http://groupware.les.inf.puc-rio.br/work.jsf?p1=10335
+
+**Objective**
+Develop a prediction model using the training data set to predict Classe. 
+
+**Loading & Exploring Data**
+
+```{r lib, cache = T, echo = T, message = F, warning = F, tidy = F}
+# Loading libraries & enable parallel processing
+library(caret);library(gbm);library(randomForest);library(doParallel)
+set.seed(12345)
+cl <- makeCluster(detectCores());registerDoParallel(cl)
+```
+```{r dat1, cache = T, echo = T, message = F, warning = F, tidy = F}
+training.rd <- read.csv("C:/Users/Werner/Documents/rcourse/pml01/pmldata/pml-training.csv")
+testing.rd <- read.csv("C:/Users/Werner/Documents/rcourse/pml01/pmldata/pml-testing.csv")
+```
+```{r dat2, cache = T, echo = T, message = F, warning = F, tidy = F, result = F}
+dim(training.rd);dim(testing.rd);
+```
+With 19622 rows and 160 columns the training data set is huge.
+Using commands like View(training.rd) and edit(training.rd) the need for cleaning data is obvious (empty columns, NA columns). Also columns 1 to 7 are not related to measurements.
+Not related columns and NA columns are eliminated. In case I have trouble to develop a very predictive model I would come back to the data cleaning activities. 
+As the number of columns is huge I also use nearZeroVar(t) to eliminate columns with small variances.
+```{r dat3, cache = T, echo = T, message = F, warning = F, tidy = F, result = F}
+t<- training.rd[,!sapply(training.rd,function(x) any(is.na(x)))]
+t <- t[,-c(1:7)]
+nvar <- nearZeroVar(t)
+tm <-  t[,-nvar]; dim(tm)
+```
+**Test & Validation Data**
+The 19622 rows are splitted. 13737 rows are used to develop the model, 5885 rows are 
+kept aside to validate the model(s)
+```{r dat4, cache = T, echo = T, message = F, warning = F, tidy = F, result = F}
+# create training set indexes with 70% of data
+inTrain <- createDataPartition(y=tm$classe,p=0.70, list=FALSE)
+training.dt <- tm[inTrain,]
+val.dt <- tm[-inTrain,]
+dim(training.dt); dim(val.dt)
+
+```
+**Model Development**
+As we have a classification problem (5 classes) a very popular and accurate method is random forest tree (RF) along with boosting. The 2nd method is therefore is gradient boosting (GBM).
+As RF showed very accurate prediction with default values it was the model of choice.
+I tried to improve th default RF model but was not able to improve it with mtry.
+
+```{r mod1, cache = T, echo = T, message = F, warning = F, tidy = F, result = F}
+f1 <- randomForest(classe ~ ., data = training.dt) 
+f2 <- train(classe ~ ., data = training.dt,method="gbm",verbose=FALSE) 
+tuneRF(training.dt[,-53], training.dt[,53])
+f3 <- randomForest(classe ~ ., data = training.dt, mtry=7)
+
+```
+**Model Validation**
+The 3 models are tested against the training data set and the validation training set
+```{r mod2, cache = T, echo = T, message = F, warning = F, tidy = F, results='hide'}
+pred.t1 <- predict(f1, training.dt) 
+c.t1<- confusionMatrix(training.dt$classe,pred.t1)
+
+pred.t2 <- predict(f2, training.dt)
+c.t2<- confusionMatrix(training.dt$classe,pred.t2)
+
+pred.t3 <- pred.t3 <- predict(f3, training.dt) 
+c.t3 <- confusionMatrix(training.dt$classe,pred.t3)
+
+pred.v1 <- predict(f1, val.dt) 
+c.v1 <- confusionMatrix(val.dt$classe,pred.v1)
+
+pred.v2 <- predict(f2, val.dt) 
+c.v2<- confusionMatrix(val.dt$classe,pred.v2)
+
+pred.v3 <- predict(f3, val.dt) 
+c.v3 <- confusionMatrix(val.dt$classe,pred.v3)
+
+```
+**Print  Validation for Training Data Set **
+```{r mod3, cache = T, echo = T, message = F, warning = F, tidy = F, result = F}
+c.t1; c.t2;c.t3
+```
+**Print  Validation for Validation Data Set **
+```{r mod4, cache = T, echo = T, message = F, warning = F, tidy = F, result = F}
+c.v1; c.v2;c.v3
+
+```
+**In/Out Error Rates**
+in-sample errors
+t1 had no in-errors, t2 had about 2.5% in-errors and t3 again had no 
+in-errors
+out of sample errors
+Doing the prediction against t1, t2, t3 showed an accuracy of 99.41%,
+96.48% and 99.34%
+
