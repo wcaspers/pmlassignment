@@ -1,3 +1,6 @@
+---
+output: html_document
+---
 ##Machine Learning Project Assignment
 ## Weight lifting exercise - Predict if exercises are done correctly
 **Background**
@@ -11,7 +14,7 @@ The test data are available here:
 
 https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
 
-**Refernce**
+**Reference**
 Ugulino, W.; Cardador, D.; Vega, K.; Velloso, E.; Milidiu, R.; Fuks, H. Wearable Computing:
 Accelerometers' Data Classification of Body Postures and Movements. Proceedings of 21st
 Brazilian Symposium on Artificial Intelligence. Advances in Artificial Intelligence - SBIA 2012. In: Lecture
@@ -21,6 +24,9 @@ http://groupware.les.inf.puc-rio.br/work.jsf?p1=10335
 
 **Objective**
 Develop a prediction model using the training data set to predict Classe. 
+
+**Summary**
+A prediction model was developed based on random forest which did very well in cross validation and was able to classify all testing observations (20) correctly
 
 **Loading & Exploring Data**
 
@@ -40,7 +46,8 @@ dim(training.rd);dim(testing.rd);
 With 19622 rows and 160 columns the training data set is huge.
 Using commands like View(training.rd) and edit(training.rd) the need for cleaning data is obvious (empty columns, NA columns). Also columns 1 to 7 are not related to measurements.
 Not related columns and NA columns are eliminated. In case I have trouble to develop a very predictive model I would come back to the data cleaning activities. 
-As the number of columns is huge I also use nearZeroVar(t) to eliminate columns with small variances.
+As the number of columns is huge I also use nearZeroVar(t) to eliminate columns with small variances (no or small predictive value)
+
 ```{r dat3, cache = T, echo = T, message = F, warning = F, tidy = F, result = F}
 t<- training.rd[,!sapply(training.rd,function(x) any(is.na(x)))]
 t <- t[,-c(1:7)]
@@ -59,9 +66,13 @@ dim(training.dt); dim(val.dt)
 
 ```
 **Model Development**
-As we have a classification problem (5 classes) a very popular and accurate method is random forest tree (RF) along with boosting. The 2nd method is therefore is gradient boosting (GBM).
+As we have a classification problem (5 classes) a very popular and accurate method is random forest tree (RF) along with boosting. The 2nd method is therefore is gradient boosted Regression Model (GBM).
 As RF showed very accurate prediction with default values it was the model of choice.
-I tried to improve th default RF model but was not able to improve it with mtry.
+I tried to improve the default RF model but was not able to improve it with mtry.
+
+-  Model 1 (f1) : Random Forest, default setting
+-  Model 2 (f2) : Generalized Boosted Regression Modeling
+-  Model 3 (f3) : Random Forest, with optimal mtry parameter
 
 ```{r modA, cache = T, echo = T, message = F, warning = F, tidy = F, result = F}
 tuneRF(training.dt[,-53], training.dt[,53])
@@ -74,7 +85,7 @@ f3 <- randomForest(classe ~ ., data = training.dt, mtry=7)
 
 ```
 **Model Validation**
-The 3 models are tested against the training data set and the validation training set
+The 3 models are tested against the training data set and validated against the validation training set
 ```{r mod2, cache = T, echo = T, message = F, warning = F, tidy = F, results='hide'}
 pred.t1 <- predict(f1, training.dt) 
 c.t1<- confusionMatrix(training.dt$classe,pred.t1)
@@ -95,25 +106,24 @@ pred.v3 <- predict(f3, val.dt)
 c.v3 <- confusionMatrix(val.dt$classe,pred.v3)
 
 ```
-**Print  Validation for Training Data Set **
+**Print  Confusion Matrix for Training Data Set **
 ```{r mod3, cache = T, echo = T, message = F, warning = F, tidy = F, result = F}
 c.t1; c.t2;c.t3
 ```
-**Print  Validation for Validation Data Set **
+*In Error Sample Rates**
+t1 (model 1) had no in-errors, t2 (model 2) had about 2.5% in-errors and t3 (model 3) again had no in-errors
+
+**Print  Confusion Matrix for Validation Data Set **
 ```{r mod4, cache = T, echo = T, message = F, warning = F, tidy = F, result = F}
 c.v1; c.v2;c.v3
 
 ```
-**In/Out Error Rates**
-in-sample errors
-t1 had no in-errors, t2 had about 2.5% in-errors and t3 again had no 
-in-errors
+**Out Error Rates**
 out of sample errors
-Doing the prediction against t1, t2, t3 showed an accuracy of 99.41%,
-96.48% and 99.34%
+The confusion matrix for classifying the validation data, using the models developed with the training data sets showd an accuracy of 99.41% (Model 1), 96.48% (Model 2) and 99.34% (Model 3). 
 
 **Prediction**
-Model f1 (the model with the lowest error rate related to the validation set is used to predict the classifications for the test data set (20 observation )
+f1 - Model 1, (the model with the lowest error rate related to the validation set is used to predict the classifications for the test data set (20 observation )
 The model was able to predict the outcome correctly(no errors)
 ```{r pred1, cache = T, echo = T, message = F, warning = F, tidy = F, result = F}
 pred.r <- predict(f1, testing.rd) 
@@ -130,5 +140,14 @@ pred.r
 #  }
 
 #  pml_write_files(pred.r)
+```
+##Appendix
+**Some Model 1 insight
+```{r app1, cache = T, echo = T, message = F, warning = F, tidy = F, result = F}
+summary(f1)
+str(f1)
+varImpPlot(f1, sort=TRUE)
+plot(f1)
+
 ```
 
