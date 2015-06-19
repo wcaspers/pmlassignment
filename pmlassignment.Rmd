@@ -63,10 +63,13 @@ As we have a classification problem (5 classes) a very popular and accurate meth
 As RF showed very accurate prediction with default values it was the model of choice.
 I tried to improve th default RF model but was not able to improve it with mtry.
 
+```{r modA, cache = T, echo = T, message = F, warning = F, tidy = F, result = F}
+tuneRF(training.dt[,-53], training.dt[,53])
+```
+
 ```{r mod1, cache = T, echo = T, message = F, warning = F, tidy = F, result = F}
 f1 <- randomForest(classe ~ ., data = training.dt) 
 f2 <- train(classe ~ ., data = training.dt,method="gbm",verbose=FALSE) 
-tuneRF(training.dt[,-53], training.dt[,53])
 f3 <- randomForest(classe ~ ., data = training.dt, mtry=7)
 
 ```
@@ -108,4 +111,24 @@ in-errors
 out of sample errors
 Doing the prediction against t1, t2, t3 showed an accuracy of 99.41%,
 96.48% and 99.34%
+
+**Prediction**
+Model f1 (the model with the lowest error rate related to the validation set is used to predict the classifications for the test data set (20 observation )
+The model was able to predict the outcome correctly(no errors)
+```{r pred1, cache = T, echo = T, message = F, warning = F, tidy = F, result = F}
+pred.r <- predict(f1, testing.rd) 
+pred.r
+
+# code for submitting the predictions commented out
+#answers = rep("X", 20)
+#  pml_write_files = function(x){
+#    n = length(x)
+#    for(i in 1:n){
+#      filename = paste0("problem_id_",i,".txt")
+#      write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+#    }
+#  }
+
+#  pml_write_files(pred.r)
+```
 
